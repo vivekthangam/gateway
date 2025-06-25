@@ -1,0 +1,127 @@
+{
+  "port": 8080,
+  "defaultAuthSecret": "your-super-secret-jwt-key",
+  "routes": [
+    {
+      "path": "/serviceA/users",
+      "method": "GET",
+      "targetUrl": "http://localhost:8081/users",
+      "authRequired": false,
+      "rateLimit": {
+        "limit": 5,
+        "burst": 10
+      },
+      "addRequestHeaders": {
+        "X-Gateway-User": "anonymous"
+      },
+      "cache": {
+        "enabled": true,
+        "ttlSeconds": 300
+      }
+    },
+    {
+      "path": "/serviceA/users/{id}",
+      "method": "GET",
+      "targetUrl": "http://localhost:8081/users/{id}",
+      "authRequired": true,
+      "requiredRole": "user",
+      "addRequestHeaders": {
+        "X-Gateway-Auth-Status": "authenticated"
+      },
+      "removeRequestHeaders": ["Authorization"],
+      "transformResponse": {
+        "bodyTemplate": "{\"data\": {{. | json}}}",
+        "removeFields": []
+      },
+      "cache": {
+        "enabled": true,
+        "ttlSeconds": 60
+      }
+    },
+    {
+      "path": "/serviceA/users",
+      "method": "POST",
+      "targetUrl": "http://localhost:8081/users",
+      "authRequired": true,
+      "requiredRole": "admin",
+      "rateLimit": {
+        "limit": 2,
+        "burst": 5
+      },
+      "addRequestHeaders": {
+        "X-Request-Source": "gateway"
+      },
+      "transformRequest": {
+        "bodyTemplate": "{\"gatewayProcessed\": true, \"original\": {{. | json}} }",
+        "addFields": {},
+        "removeFields": []
+      },
+      "transformResponse": {
+        "addFields": {
+          "gatewayTimestamp": "{{now}}"
+        }
+      }
+    },
+    {
+      "path": "/serviceB/products",
+      "method": "GET",
+      "targetUrl": "http://localhost:8082/products",
+      "authRequired": false,
+      "addResponseHeaders": {
+        "X-Cache-Status": "MISS"
+      },
+      "cache": {
+        "enabled": true,
+        "ttlSeconds": 120
+      }
+    },
+    {
+      "path": "/serviceB/products/{id}",
+      "method": "GET",
+      "targetUrl": "http://localhost:8082/products/{id}",
+      "authRequired": false,
+      "removeResponseHeaders": ["Server"],
+      "transformResponse": {
+        "bodyTemplate": "{\"productDetails\": {{. | json}}}",
+        "removeFields": []
+      }
+    },
+    {
+      "path": "/admin/dashboard",
+      "method": "GET",
+      "targetUrl": "http://localhost:8083/dashboard",
+      "authRequired": true,
+      "requiredRole": "admin",
+      "cache": {
+        "enabled": false
+      }
+    },
+    {
+      "path": "/external/jsonplaceholder/users",
+      "method": "GET",
+      "targetUrl": "https://jsonplaceholder.typicode.com/users",
+      "authRequired": false,
+      "cache": {
+        "enabled": true,
+        "ttlSeconds": 3600
+      },
+      "addResponseHeaders": {
+        "X-Proxied-By": "GoGateway"
+      }
+    },
+    {
+      "path": "/external/jsonplaceholder/todos/{id}",
+      "method": "GET",
+      "targetUrl": "https://jsonplaceholder.typicode.com/todos/{id}",
+      "authRequired": false,
+      "cache": {
+        "enabled": true,
+        "ttlSeconds": 180
+      },
+      "transformResponse": {
+        "bodyTemplate": "{\"todo_item\": {{. | json}}}",
+        "removeFields": ["userId"]
+      }
+    }
+  ]
+}
